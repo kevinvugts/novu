@@ -30,19 +30,35 @@ export class PostmarkEmailProvider extends BaseProvider implements IEmailProvide
   }
 
   async sendMessage(
-    options: IEmailOptions,
-    bridgeProviderData: WithPassthrough<Record<string, unknown>> = {}
-  ): Promise<ISendMessageSuccessResponse> {
-    const mailData = this.createMailData(options);
-    const response = await this.client.sendEmail(
-      this.transform<Message>(bridgeProviderData, mailData as unknown as Record<string, unknown>).body
-    );
+  options: IEmailOptions,
+  bridgeProviderData: WithPassthrough<Record<string, unknown>> = {}
+): Promise<ISendMessageSuccessResponse> {
+  const mailData = this.createMailData(options);
+  const customData = options.customData as
+    | {
+        templateId?: number;
+        templateAlias?: string;
+        templateModel?: Record<string, unknown>;
+      }
+    | undefined;
 
-    return {
-      id: response.MessageID,
-      date: response.SubmittedAt,
-    };
+  if (customData?.templateId || customData?.templateAlias) {
+    return this.sendTemplatedMessage(
+      mailData,
+      customData,
+      bridgeProviderData
+    );
   }
+
+  const response = await this.client.sendEmail(
+    this.transform<Message>(bridgeProviderData, mailData as unknown as Record<string, unknown>).body
+  );
+
+  return {
+    id: response.MessageID,
+    date: response.SubmittedAt,
+  };
+}
 
   async checkIntegration(options: IEmailOptions): Promise<ICheckIntegrationResponse> {
     try {
